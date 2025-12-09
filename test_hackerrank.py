@@ -73,6 +73,18 @@ def test_two_layers():
     print()
     return result == 1
 
+def test_failing_case():
+    """Test case from user: [1,1,1,1,2]"""
+    layer = [1, 1, 1, 1, 2]
+    result = findMinGeneration(layer)
+    print(f"Test Failing Case [1,1,1,1,2]:")
+    print(f"  Input: {layer}")
+    print(f"  Output: {result}")
+    print(f"  Expected: 6")
+    print(f"  Status: {'PASS' if result == 6 else 'FAIL'}")
+    print()
+    return result == 6
+
 def trace_example():
     """Trace through the sample case to verify logic"""
     layer = [3, 3, 6]
@@ -123,7 +135,8 @@ if __name__ == '__main__':
         test_example_case,
         test_all_equal,
         test_single_layer,
-        test_two_layers
+        test_two_layers,
+        test_failing_case
     ]
 
     results = [test() for test in tests]

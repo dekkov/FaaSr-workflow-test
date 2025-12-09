@@ -26,6 +26,9 @@ def findMinGeneration(layer):
     """
     Find the minimum generation in which all layers can have equal neurons.
 
+    Strategy: Process layers sequentially, but align deficit parity with
+    generation parity to avoid wasted generations.
+
     Args:
         layer: list of integers representing neurons in each layer
 
@@ -41,21 +44,25 @@ def findMinGeneration(layer):
     # Calculate deficit for each layer
     deficits = [target - x for x in layer]
 
-    # Process each deficit sequentially
-    # Key insight: stick with one layer and use odd+even pairs efficiently
-    # Pattern: odd gen adds 1, even gen adds 2
     generation = 0
 
     for deficit in deficits:
-        remaining = deficit
+        if deficit == 0:
+            continue
 
-        # Process this layer's deficit completely before moving to next
+        # Wait for generation parity to match deficit parity
+        # If deficit is even and we're at odd generation, skip to next even
+        if deficit % 2 == 0 and generation % 2 == 1:
+            generation += 1
+
+        # Process this layer's deficit
+        remaining = deficit
         while remaining > 0:
             generation += 1
 
-            if generation % 2 == 1:  # Odd generation: add 1 neuron
+            if generation % 2 == 1:  # Odd generation: add 1
                 remaining -= 1
-            else:  # Even generation: add 2 neurons
+            else:  # Even generation: add 2
                 remaining -= 2
 
     return generation
