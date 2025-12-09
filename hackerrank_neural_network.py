@@ -22,12 +22,89 @@ Generation 6 (even): add 2 to layer[2] -> [4, 4, 4, 4]
 Answer: 6
 """
 
+def simulate_generations(deficits):
+    """Find minimum generations using BFS."""
+    from collections import deque
+
+    if all(d == 0 for d in deficits):
+        return 0
+
+    # BFS: (deficits_state, generation)
+    # visited tracks (state, generation_parity) to allow revisiting at different parities
+    queue = deque([(tuple(deficits), 0)])
+    visited = {(tuple(deficits), 0)}
+
+    while queue:
+        state, gen = queue.popleft()
+
+        # Try next generation
+        next_gen = gen + 1
+        capacity = 1 if next_gen % 2 == 1 else 2
+        next_parity = next_gen % 2
+
+        # Collect all possible next states
+        candidates = []
+
+        # Option 1: Skip this generation
+        candidates.append(state)
+
+        # Option 2: Work on each layer that can use this generation
+        for i, deficit in enumerate(state):
+            if deficit >= capacity:
+                new_state = list(state)
+                new_state[i] -= capacity
+                candidates.append(tuple(new_state))
+
+        # Add unvisited (state, parity) combinations to queue
+        for next_state in candidates:
+            # Check if done
+            if all(d == 0 for d in next_state):
+                return next_gen
+
+            key = (next_state, next_parity)
+            if key not in visited:
+                visited.add(key)
+                queue.append((next_state, next_gen))
+
+    return float('inf')  # Should never reach here
+
+
+def greedy_simulate(deficits):
+    """Greedy simulation as fallback for large inputs."""
+    deficits = list(deficits)
+    generation = 0
+
+    while any(d > 0 for d in deficits):
+        generation += 1
+        capacity = 1 if generation % 2 == 1 else 2
+
+        best_idx = -1
+        # Prefer matching parity
+        for i, deficit in enumerate(deficits):
+            if deficit >= capacity and deficit % 2 == capacity % 2:
+                best_idx = i
+                break
+
+        # Otherwise use any
+        if best_idx == -1:
+            for i, deficit in enumerate(deficits):
+                if deficit >= capacity:
+                    best_idx = i
+                    break
+
+        if best_idx != -1:
+            deficits[best_idx] -= capacity
+
+    return generation
+
+
 def findMinGeneration(layer):
     """
     Find the minimum generation in which all layers can have equal neurons.
 
-    Strategy: Process layers sequentially, but align deficit parity with
-    generation parity to avoid wasted generations.
+    Key insight: Try different target values and pick the one that minimizes
+    the generation count. Higher targets may be faster due to better use of
+    even generations (which add 2 neurons).
 
     Args:
         layer: list of integers representing neurons in each layer
@@ -38,34 +115,27 @@ def findMinGeneration(layer):
     if not layer:
         return 0
 
-    # Target is the maximum value (we can only add neurons, not remove)
-    target = max(layer)
+    max_val = max(layer)
 
-    # Calculate deficit for each layer
-    deficits = [target - x for x in layer]
+    # Try different targets starting from max_val
+    min_generations = float('inf')
 
-    generation = 0
+    # Check targets from max_val up to a reasonable upper bound
+    # Pattern: higher targets eventually become worse, so we can stop early
+    for target in range(max_val, max_val + 1000):
+        deficits = [target - x for x in layer]
 
-    for deficit in deficits:
-        if deficit == 0:
+        if any(d < 0 for d in deficits):
             continue
 
-        # Wait for generation parity to match deficit parity
-        # If deficit is even and we're at odd generation, skip to next even
-        if deficit % 2 == 0 and generation % 2 == 1:
-            generation += 1
+        generations = simulate_generations(deficits)
+        min_generations = min(min_generations, generations)
 
-        # Process this layer's deficit
-        remaining = deficit
-        while remaining > 0:
-            generation += 1
+        # Early termination: if we're getting worse for several iterations
+        if generations > min_generations + 20:
+            break
 
-            if generation % 2 == 1:  # Odd generation: add 1
-                remaining -= 1
-            else:  # Even generation: add 2
-                remaining -= 2
-
-    return generation
+    return min_generations
 
 
 if __name__ == '__main__':
